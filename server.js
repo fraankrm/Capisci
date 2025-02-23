@@ -8,7 +8,6 @@ app.use(cors({
   origin: 'https://voluma.digital' // Allow only your domain
 }));
 
-const app = express();
 const port = process.env.PORT || 3000; // Render asignará el puerto automáticamente
 
 const anthropic = new Anthropic({
