@@ -3,7 +3,7 @@ const express = require('express');
 const Anthropic = require('@anthropic-ai/sdk');
 
 const app = express();
-const port = process.env.PORT || 3000;
+const port = process.env.PORT || 3000; // Render asignará el puerto automáticamente
 
 const anthropic = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY,
@@ -41,10 +41,6 @@ app.post('/api/chat', async (req, res) => {
     console.error('Error:', error);
     res.status(500).json({ error: 'Error en el servidor' });
   }
-});
-
-app.get('/api/history', (req, res) => {
-  res.json({ history: conversationHistory });
 });
 
 app.post('/api/reset', (req, res) => {
