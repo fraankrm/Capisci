@@ -2,6 +2,14 @@ require('dotenv').config();
 const express = require('express');
 const Anthropic = require('@anthropic-ai/sdk');
 
+const express = require('express');
+const cors = require('cors');
+const app = express();
+
+app.use(cors({
+  origin: 'https://voluma.digital' // Allow only your domain
+}));
+
 const app = express();
 const port = process.env.PORT || 3000; // Render asignará el puerto automáticamente
 
