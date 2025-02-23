@@ -3,21 +3,31 @@ const express = require('express');
 const Anthropic = require('@anthropic-ai/sdk');
 
 const app = express();
-const port = process.env.PORT || 3000; // Render asignará el puerto automáticamente
+const port = process.env.PORT || 3000;
 
+// Middleware para CORS
 app.use((req, res, next) => {
-  res.header('Access-Control-Allow-Origin', 'https://voluma.digital'); // Solo permite voluma.digital
+  res.header('Access-Control-Allow-Origin', 'https://voluma.digital');
   res.header('Access-Control-Allow-Headers', 'Content-Type');
   res.header('Access-Control-Allow-Methods', 'POST');
   if (req.method === 'OPTIONS') {
-    return res.sendStatus(200); // Responde a las solicitudes preflight
+    return res.sendStatus(200);
   }
   next();
 });
 
+// Verifica la clave API antes de inicializar
+if (!process.env.ANTHROPIC_API_KEY) {
+  console.error('Error: ANTHROPIC_API_KEY no está definida');
+  process.exit(1); // Detiene el servidor si no hay clave
+}
+
 const anthropic = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY,
 });
+
+// Prueba que el cliente esté inicializado
+console.log('Cliente Anthropic inicializado:', anthropic.messages ? 'OK' : 'FALLÓ');
 
 app.use(express.json());
 
@@ -41,8 +51,8 @@ app.post('/api/chat', async (req, res) => {
     conversationHistory.push({ role: 'assistant', content: aiResponse });
     res.json({ response: aiResponse });
   } catch (error) {
-    console.error('Error:', error);
-    res.status(500).json({ error: 'Error en el servidor' });
+    console.error('Error en Anthropic:', error.message);
+    res.status(500).json({ error: `Error en el servidor: ${error.message}` });
   }
 });
 
