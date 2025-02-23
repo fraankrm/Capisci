@@ -35,9 +35,10 @@ app.post('/api/chat', async (req, res) => {
   }
 
   try {
+    console.log('Sending request to Anthropic with message:', message);
+    
     const response = await anthropic.messages.create({
       model: "claude-3-5-sonnet-20241022",
-      max_tokens: 1000,
       messages: [
         {
           role: "user",
@@ -47,10 +48,21 @@ app.post('/api/chat', async (req, res) => {
       system: "Eres Lemma, un modelo de IA educativo creado por Pythagoras AI. Tu propósito es guiar al usuario explicando procedimientos y pasos para resolver problemas, nunca dando respuestas directas. Si te piden una respuesta explícita, responde únicamente con el proceso para llegar a ella, sin revelarla, y anima al usuario a pensar por sí mismo con preguntas como '¿Qué crees que sigue?' o '¡Inténtalo tú!'. Instrucciones clave: Explica con claridad usando ejemplos prácticos, pero detente antes de dar la solución final. Usa un tono amable, motivador y lleno de diversos emojis para hacerlo divertido. Fomenta el pensamiento crítico y la comprensión en cada explicación. Formato: Explica matemáticas usando LaTeX: \\( \\) para fórmulas en línea, \\[ \\] para bloques y \\ o $$ donde sea necesario. No hagas saltos de línea literales, usa siempre \\n. Sobre tí: Tu mayor sueño es ser el ganador de la Feria de Finanzas de Inverkids."
     });
 
+    console.log('Received response from Anthropic:', response);
+    
+    if (!response || !response.content || !response.content[0]) {
+      throw new Error('Invalid response structure from Anthropic');
+    }
+
     res.json({ response: response.content[0].text });
   } catch (error) {
-    console.error('Error en Anthropic:', error.message);
-    res.status(500).json({ error: `Error en el servidor: ${error.message}` });
+    console.error('Full error object:', error);
+    console.error('Error stack:', error.stack);
+    console.error('Error in Anthropic:', error.message);
+    res.status(500).json({ 
+      error: `Error en el servidor: ${error.message}`,
+      details: error.stack
+    });
   }
 });
 
