@@ -1,0 +1,466 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" href="logo.png" type="image/png">
+    <title>Pythagoras AI</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.7/MathJax.js?config=TeX-MML-AM_CHTML"></script>
+    <script type="text/x-mathjax-config">
+        MathJax.Hub.Config({
+            tex2jax: {
+                inlineMath: [['$','$'], ['\\(','\\)']],
+                displayMath: [['$$','$$'], ['\\[','\\]']],
+                processEscapes: true
+            }
+        });
+    </script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: InterVariable, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            font-weight: 500;
+        }
+
+        body {
+            min-height: 100vh;
+            max-height: 100vh;
+            max-width: 100vw;
+            background-color: #ffffff;
+        }
+
+        .header {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 64px;
+            padding: 0 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: linear-gradient(to top, rgba(255, 255, 255, 1) 0%,  rgba(255, 255, 255, 0.5) 30%, rgba(255, 255, 255, 0) 100%);
+            backdrop-filter: blur(8px);
+            z-index: 10;
+        }
+
+        header::after {
+            content: "";
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: inherit;
+            filter: blur(8px);
+            pointer-events: none;
+            mask-image: linear-gradient(to bottom, rgba(255, 255, 255, 1) 0%,  rgba(255, 255, 255, 0.5) 30%, rgba(255, 255, 255, 0) 100%);
+            -webkit-mask-image: linear-gradient(to bottom, rgba(0, 0, 0, 1) 0%, rgba(0, 0, 0, 0) 100%);
+        }
+
+        .logo {
+            height: 32px;
+            max-height: 32px;
+            margin: auto 0;
+        }
+
+        .new-chat-btn {
+            color: black;
+            background-color: #ffffff;
+            border: 1px solid #c6c7ca;
+            border-radius: 27px;
+            padding: 0.75rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.2s ease;
+            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+            margin: auto 0;
+        }
+
+        .new-chat-btn:hover {
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        }
+
+        .main-content {
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 84px 2rem 120px;
+            min-height: 100vh;
+        }
+
+        .chat-container {
+            display: flex;
+            flex-direction: column;
+            gap: 1.5rem;
+        }
+
+        .thinking-text {
+            color: #666666;
+            animation: thinkingPulse 2s infinite;
+            font-style: italic;
+        }
+
+        @keyframes thinkingPulse {
+            0% { color: #727272; }
+            50% { color: #242424; }
+            100% { color: #727272; }
+        }
+
+        .message {
+            display: flex;
+            justify-content: center;
+            gap: 1rem;
+            opacity: 0;
+            transform: translateY(10px);
+            animation: fadeIn 0.3s ease forwards;
+        }
+
+        .message-content {
+            flex: 1;
+            line-height: 1.6;
+            background-color: #e0e0e000;
+            padding: 1rem 1.25rem 1rem;
+            border-radius: 27px;
+            width: auto;
+            max-width: 780px;
+            margin: 0 auto 0 2rem;
+        }
+
+        .user-content {
+            background-color: rgba(3, 100, 61, 0.279);
+            max-width: 400px;
+            margin: 0 0 0 auto;
+        }
+
+        @keyframes fadeIn {
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+
+        .input-container {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            padding: 1.5rem 2rem 0.5rem 2rem;
+            background: linear-gradient(to bottom, transparent, rgb(255, 255, 255) 20%);
+            z-index: 10;
+        }
+
+        .input-wrapper {
+            max-width: 800px;
+            margin: 0 auto;
+            position: relative;
+            background-color: #ececec;
+            border-radius: 16px;
+            border: 2px solid transparent;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08),
+                        0 2px 8px rgba(0, 0, 0, 0.04),
+                        0 0 2px rgba(0, 0, 0, 0.02);
+            transition: all 0.2s ease;
+        }
+
+        .input-wrapper:hover {
+            box-shadow: 0 8px 28px rgba(12, 135, 71, 0.2),
+                        0 2px 8px rgba(12, 135, 71, 0.1),
+                        0 0 2px rgba(12, 135, 71, 0.04);
+        }
+
+        .input-wrapper:focus-within {
+            border-color: rgba(1, 115, 81, 0.43);
+            box-shadow: 0 8px 28px rgba(12, 135, 71, 0.2),
+                        0 2px 8px rgba(12, 135, 71, 0.1),
+                        0 0 2px rgba(12, 135, 71, 0.04);
+        }
+
+        .input-box {
+            background: transparent;
+            border: none;
+            border-radius: 16px;
+            padding: 0.875rem 2.75rem 0.875rem 1rem;
+            width: 100%;
+            min-height: 50px;
+            max-height: 200px;
+            resize: none;
+            outline: none;
+            font-size: 1rem;
+            line-height: 1.5;
+        }
+
+        .input-box::placeholder {
+            color: #717171;
+        }
+
+
+        .send-button {
+            position: absolute;
+            top: 8px;
+            right: 8px;
+            background-color: #016648;
+            border: none;
+            border-radius: 12px;
+            width: 34px;
+            height: 34px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            opacity: 0;
+            pointer-events: none;
+            transform: scale(0.9);
+        }
+
+        .send-button.visible {
+            opacity: 1;
+            pointer-events: auto;
+            transform: scale(1);
+        }
+
+        .send-button:hover {
+            background-color: #006043;
+            transform: scale(1.05);
+        }
+
+        .send-button:active {
+            transform: scale(0.95);
+        }
+
+        .char-count {
+            position: absolute;
+            right: 48px;
+            bottom: 8px;
+            font-size: 12px;
+            color: #9CA3AF;
+            opacity: 0;
+            transition: opacity 0.2s;
+        }
+
+        .char-count.visible {
+            opacity: 1;
+        }
+
+        @media (max-width: 640px) {
+            .header {
+                padding: 0 1rem;
+            }
+            .main-content {
+                padding: 84px 1rem 120px;
+            }
+            .input-container {
+                padding: 1rem;
+            }
+            .new-chat-btn span { 
+                display: none;
+            }
+        }
+
+        .disclaimer {
+            color: #707070;
+            padding-top: 0.5rem;
+            text-align: center;
+            font-size: 0.8rem;
+            font-weight: normal;
+        }
+    </style>
+</head>
+<body>
+    <header class="header">
+        <img class="logo" src="Pythagoras.png">
+        <button class="new-chat-btn" onclick="location.reload()">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <line x1="12" y1="5" x2="12" y2="19"></line>
+                <line x1="5" y1="12" x2="19" y2="12"></line>
+            </svg>
+            <span>Nueva pregunta</span>
+        </button>
+    </header>
+    <div class="main-content">
+        <div class="chat-container">
+        </div>
+    </div>
+    <div class="input-container">
+        <div class="input-wrapper">
+            <textarea class="input-box" placeholder="Envía una pregunta..." rows="1"></textarea>
+            <span class="char-count">0/2000</span>
+            <button class="send-button">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+                    <path d="M7 11L12 6L17 11M12 18V7" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+            </button>
+        </div>
+        <div class="disclaimer">
+            <p>La IA puede cometer errores. Si necesitas ayuda consulta a un profesor.</p>
+        </div>
+    </div>
+
+    <script>
+        const chatContainer = document.querySelector('.chat-container');
+        const messageInput = document.querySelector('.input-box');
+        const sendButton = document.querySelector('.send-button');
+        const charCount = document.querySelector('.char-count');
+        const newChatBtn = document.querySelector('.new-chat-btn');
+        const maxChars = 400;
+
+        let isProcessing = false;
+        let isRendering = false;
+
+        function updateUI() {
+        const length = messageInput.value.length;
+        charCount.textContent = `${length}/${maxChars}`;
+        charCount.classList.toggle('visible', length > 0);
+        sendButton.classList.toggle('visible', length > 0 && !isRendering);
+        messageInput.style.height = 'auto';
+        messageInput.style.height = Math.min(messageInput.scrollHeight, 200) + 'px';
+        }
+
+        function scrollToBottom() {
+        window.scrollTo({
+            top: document.body.scrollHeight,
+            behavior: 'smooth',
+        });
+        }
+
+        function animateText(element, rawText, shouldThink) {
+        async function showThinking() {
+            element.innerHTML = '<span class="thinking-text">Generando respuesta...</span>';
+            await new Promise((resolve) => setTimeout(resolve, Math.random() * 2000 + 1000));
+        }
+
+        function startTyping() {
+            element.innerHTML = '';
+            let index = 0;
+            const words = rawText.split(' ');
+
+            function addWord() {
+            if (index < words.length) {
+                const span = document.createElement('span');
+                span.className = 'word';
+                span.textContent = words[index] + ' ';
+                element.appendChild(span);
+                index++;
+                setTimeout(addWord, 40);
+            } else {
+                finishAnimation();
+                isRendering = false;
+                updateUI();
+                scrollToBottom();
+            }
+            }
+
+            function finishAnimation() {
+            element.innerHTML = rawText;
+            MathJax.Hub.Queue(['Typeset', MathJax.Hub, element]);
+            }
+
+            addWord();
+        }
+
+        if (shouldThink) {
+            showThinking().then(startTyping);
+        } else {
+            startTyping();
+        }
+        }
+
+        function createMessageElement(content, isUser, shouldThink) {
+        const messageDiv = document.createElement('div');
+        messageDiv.className = `message ${isUser ? 'user' : 'ai'}`;
+
+        const messageContent = document.createElement('div');
+        messageContent.className = 'message-content';
+        const processedContent = content.replace(/\\n/g, '<br>').replace(/"/g, "'");
+        if (isUser) {
+            messageContent.className += ' user-content';
+            messageContent.innerHTML = processedContent;
+            MathJax.Hub.Queue(['Typeset', MathJax.Hub, messageContent]);
+        } else {
+            animateText(messageContent, processedContent, shouldThink);
+        }
+
+        isRendering = true;
+        updateUI();
+        messageDiv.appendChild(messageContent);
+        return messageDiv;
+        }
+
+        async function sendMessage() {
+        const content = messageInput.value.trim();
+        if (!content || isProcessing || isRendering) return;
+
+        isProcessing = true;
+        sendButton.disabled = true;
+        messageInput.value = '';
+        messageInput.style.height = 'auto';
+
+        chatContainer.appendChild(createMessageElement(content, true, false));
+        scrollToBottom();
+
+        try {
+            const response = await fetch('/api/chat', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ message: content }),
+            });
+
+            if (!response.ok) {
+            throw new Error(`Error ${response.status}: ${response.statusText}`);
+            }
+
+            const data = await response.json();
+            chatContainer.appendChild(createMessageElement(data.response, false, true));
+            scrollToBottom();
+        } catch (error) {
+            console.error('Error en sendMessage:', error);
+            chatContainer.appendChild(createMessageElement(`Lo siento, hubo un error: ${error.message}. Intenta de nuevo.`, false, false));
+        } finally {
+            isProcessing = false;
+            sendButton.disabled = false;
+            updateUI();
+        }
+        }
+
+        async function resetConversation() {
+        try {
+            const response = await fetch('/api/reset', { method: 'POST' });
+            if (!response.ok) throw new Error('No se pudo reiniciar');
+            chatContainer.innerHTML = '';
+            chatContainer.appendChild(createMessageElement('¡Hola! Soy la IA de tu colegio. ¿Qué aprenderemos hoy? 😊', false, false));
+        } catch (error) {
+            console.error('Error al reiniciar:', error);
+        }
+        }
+
+        messageInput.addEventListener('input', (e) => {
+        if (e.target.value.length > maxChars) {
+            e.target.value = e.target.value.slice(0, maxChars);
+        }
+        updateUI();
+        });
+
+        messageInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault();
+            sendMessage();
+        }
+        });
+
+        sendButton.addEventListener('click', sendMessage);
+        newChatBtn.addEventListener('click', resetConversation);
+
+        window.addEventListener('load', () => {
+        chatContainer.appendChild(createMessageElement('¡Hola! Soy la IA de tu colegio. ¿Qué aprenderemos hoy? 😊', false, false));
+        });
+
+        updateUI();
+    </script>    
+</body>
+</html>
