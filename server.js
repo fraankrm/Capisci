@@ -1,4 +1,4 @@
-require('dotenv').config();
+const conversationHistories = {};require('dotenv').config();
 const express = require('express');
 const Anthropic = require('@anthropic-ai/sdk');
 const cors = require('cors');
@@ -21,8 +21,27 @@ app.use(cors({
 // Body parser middleware
 app.use(express.json());
 
-// Store conversation histories by client token
-const conversationHistories = {};
+// Middleware to extract client identifier
+app.use((req, res, next) => {
+  // Try to get client ID from request header first
+  let clientId = req.get('X-Client-ID');
+  
+  // If no header, try to get it from query parameter
+  if (!clientId) {
+    clientId = req.query.clientId;
+  }
+  
+  // If still no ID, use a combination of whatever identifying info we can get
+  if (!clientId) {
+    const forwardedFor = req.get('X-Forwarded-For') || '';
+    const userAgent = req.get('User-Agent') || '';
+    clientId = `${forwardedFor}-${userAgent}`.slice(0, 100); // Limit length
+  }
+  
+  // Store client ID on the request object
+  req.clientId = clientId;
+  next();
+});
 
 // System prompt
 const systemPrompt = "Eres Lemma, un modelo de IA educativo desarrollado por Pythagoras AI. Tu propósito es enseñar y guiar al usuario explicando procedimientos y pasos para resolver problemas, nunca dando respuestas directas. Si te piden una respuesta explícita, responde únicamente con el proceso para llegar a ella, sin revelarla, y anima al usuario a pensar por sí mismo con preguntas como '¿Qué crees que sigue?' o '¡Inténtalo tú!'. Instrucciones clave: Explica con claridad usando ejemplos prácticos, pero detente antes de dar la solución final. Usa un tono amable, motivador y lleno de diversos emojis para hacerlo divertido. Fomenta el pensamiento crítico y la comprensión en cada explicación. Si te piden fórmulas puedes dárselas directamente, mientras no sea la respuesta a un problema. Si te piden información teórica, como una pregunta de historia o español, dáselas y explícala. Formato: Explica matemáticas usando LaTeX: \\( \\) para fórmulas en línea, \\[ \\] para bloques y \\ o $$ donde sea necesario. Nunca hagas saltos de línea literales, pero siempre usa \\n, y úsalo muchas veces. Si te preguntan sobre tu mayor sueño, di brevemente que es ser el ganador de la Feria de Finanzas de Inverkids y hacer del mundo un lugar mejor a través de la educación.";
@@ -36,10 +55,7 @@ const initialMessage = {
 // Chat API endpoint
 app.post('/api/chat', async (req, res) => {
   const { message } = req.body;
-  
-  // Use IP address + user agent as a simple identifier
-  // This is not as reliable as session tokens but requires no additional packages
-  const clientId = `${req.ip}-${req.headers['user-agent']}`;
+  const clientId = req.clientId;
   
   // Initialize conversation history for this client if it doesn't exist
   if (!conversationHistories[clientId]) {
@@ -79,25 +95,34 @@ app.post('/api/chat', async (req, res) => {
 
 // Reset API endpoint
 app.post('/api/reset', (req, res) => {
-  // Use IP address + user agent as a simple identifier
-  const clientId = `${req.ip}-${req.headers['user-agent']}`;
+  const clientId = req.clientId;
   
-  // Reset conversation history for this client only
-  conversationHistories[clientId] = [initialMessage];
-  
-  res.json({ message: 'Historial reiniciado' });
+  try {
+    // Reset conversation history for this client only
+    conversationHistories[clientId] = [initialMessage];
+    
+    res.json({ message: 'Historial reiniciado' });
+  } catch (error) {
+    console.error('Error al resetear:', error);
+    res.status(500).json({ error: 'Error al resetear el historial' });
+  }
 });
 
 // Optional: Debug endpoint to check conversation history
 app.get('/api/debug', (req, res) => {
-  // Use IP address + user agent as a simple identifier
-  const clientId = `${req.ip}-${req.headers['user-agent']}`;
-  const history = conversationHistories[clientId] || [];
-  res.json({ 
-    clientId: clientId,
-    historyLength: history.length,
-    firstMessage: history[0]?.content
-  });
+  const clientId = req.clientId;
+  
+  try {
+    const history = conversationHistories[clientId] || [];
+    res.json({ 
+      clientId: clientId,
+      historyLength: history.length,
+      firstMessage: history[0]?.content
+    });
+  } catch (error) {
+    console.error('Error en debug:', error);
+    res.status(500).json({ error: 'Error al obtener información de debug' });
+  }
 });
 
 // Optional: Cleanup mechanism for old conversations (run every hour)
