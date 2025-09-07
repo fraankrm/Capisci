@@ -13,9 +13,20 @@ const anthropic = new Anthropic({
 });
 
 // CORS configuration
+const allowedOrigins = [
+  'https://capisci.org',
+  'https://www.capisci.org'
+];
+
 app.use(cors({
-  origin: 'https://voluma.digital', // Allow only your domain
-  credentials: true // Important for cookies to work cross-origin
+  origin: function (origin, callback) {
+    if (!origin || allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
+  credentials: true
 }));
 
 // Body parser middleware
