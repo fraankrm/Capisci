@@ -1,7 +1,7 @@
 {
-  "name": "pythagoras-ai-backend",
+  "name": "capisci-backend",
   "version": "1.0.0",
-  "description": "Backend para Pythagoras AI",
+  "description": "Backend para Capisci",
   "main": "server.js",
   "scripts": {
     "start": "node server.js"

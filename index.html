@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="icon" href="logo.png" type="image/png">
-    <title>Pythagoras AI</title>
+    <title>Capisci</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.7/MathJax.js?config=TeX-MML-AM_CHTML"></script>
     <script type="text/x-mathjax-config">
         MathJax.Hub.Config({
@@ -274,7 +274,7 @@
 </head>
 <body>
     <header class="header">
-        <img class="logo" src="Pythagoras.png">
+        <img class="logo" src="Capisci.png">
         <button class="new-chat-btn" onclick="location.reload()">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <line x1="12" y1="5" x2="12" y2="19"></line>
@@ -433,7 +433,7 @@
             const response = await fetch('/api/reset', { method: 'POST' });
             if (!response.ok) throw new Error('No se pudo reiniciar');
             chatContainer.innerHTML = '';
-            chatContainer.appendChild(createMessageElement('¡Hola! Soy la IA de tu colegio. ¿Qué aprenderemos hoy? 😊', false, false));
+            chatContainer.appendChild(createMessageElement('¡Hola! Soy la IA de tu escuela. ¿Qué aprenderemos hoy? 😊', false, false));
         } catch (error) {
             console.error('Error al reiniciar:', error);
         }
@@ -457,7 +457,7 @@
         newChatBtn.addEventListener('click', resetConversation);
 
         window.addEventListener('load', () => {
-        chatContainer.appendChild(createMessageElement('¡Hola! Soy la IA de tu colegio. ¿Qué aprenderemos hoy? 😊', false, false));
+        chatContainer.appendChild(createMessageElement('¡Hola! Soy la IA de tu escuela. ¿Qué aprenderemos hoy? 😊', false, false));
         });
 
         updateUI();
