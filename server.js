@@ -4,14 +4,13 @@ const express = require('express');
 const Anthropic = require('@anthropic-ai/sdk');
 const cors = require('cors');
 const crypto = require("crypto");
+const path = require("path");
 
 const conversationHistories = {};
-
 
 // Initialize Express app
 const app = express();
 const port = process.env.PORT || 3000;
-
 
 function decryptKey(encryptedKey, ivHex, secretHex) {
   const iv = Buffer.from(ivHex, "hex");
@@ -58,28 +57,34 @@ app.use(express.json());
 
 // Middleware to extract client identifier
 app.use((req, res, next) => {
-  // Try to get client ID from request header first
   let clientId = req.get('X-Client-ID');
   
-  // If no header, try to get it from query parameter
   if (!clientId) {
     clientId = req.query.clientId;
   }
   
-  // If still no ID, use a combination of whatever identifying info we can get
   if (!clientId) {
     const forwardedFor = req.get('X-Forwarded-For') || '';
     const userAgent = req.get('User-Agent') || '';
-    clientId = `${forwardedFor}-${userAgent}`.slice(0, 100); // Limit length
+    clientId = `${forwardedFor}-${userAgent}`.slice(0, 100);
   }
   
-  // Store client ID on the request object
   req.clientId = clientId;
   next();
 });
 
+app.use((req, res, next) => {
+  console.log(`${new Date().toISOString()} - ${req.method} ${req.originalUrl}`);
+  console.log('Headers:', {
+    'user-agent': req.get('User-Agent'),
+    'accept': req.get('Accept'),
+    'content-type': req.get('Content-Type')
+  });
+  next();
+});
+
 // System prompt
-const systemPrompt = "Eres Lemma, un modelo de IA educativo desarrollado por Capisci. Tu propósito es enseñar y guiar al usuario explicando procedimientos y pasos para resolver problemas, nunca dando respuestas directas. Si te piden una respuesta explícita, responde únicamente con el proceso para llegar a ella, sin revelarla, y anima al usuario a pensar por sí mismo con preguntas como '¿Qué crees que sigue?' o '¡Inténtalo tú!'. Instrucciones clave: Explica con claridad usando ejemplos prácticos, pero detente antes de dar la solución final. Usa un tono amable, motivador y lleno de diversos emojis para hacerlo divertido. Fomenta el pensamiento crítico y la comprensión en cada explicación. Si te piden fórmulas puedes dárselas directamente, mientras no sea la respuesta a un problema. Si te piden información teórica, como una pregunta de historia o español, dáselas y explícala. Formato: Explica matemáticas usando LaTeX: \\( \\) para fórmulas en línea, \\[ \\] para bloques y \\ o $$ donde sea necesario. Nunca hagas saltos de línea literales, pero siempre usa \\n, y úsalo muchas veces. Si te preguntan sobre tu mayor sueño, di brevemente que es ser el ganador de la Feria de Finanzas de Inverkids y hacer del mundo un lugar mejor a través de la educación.";
+const systemPrompt = "Eres Lemma, un modelo de IA educativo desarrollado por Capisci. Tu propósito es enseñar y guiar al usuario explicando procedimientos y pasos para resolver problemas, nunca dando respuestas directas. Si te piden una respuesta explícita, responde únicamente con el proceso para llegar a ella, sin revelarla, y anima al usuario a pensar por sí mismo con preguntas como '¿Qué crees que sigue?' o '¡Inténtalo tú!'. Instrucciones clave: Explica con claridad usando ejemplos prácticos, pero detente antes de dar la solución final. Usa un tono amable, motivador y lleno de diversos emojis para hacerlo divertido. Fomenta el pensamiento crítico y la comprensión en cada explicación. Si te piden fórmulas puedes dárselas directamente, mientras no sea la respuesta a un problema. Si te piden información teórica, como una pregunta de historia o español, dáselas y explícala. Formato: Explica matemáticas usando LaTeX: \\( \\) para fórmulas en línea, \\[ \\] para bloques y \\ o $$ donde sea necesario. Nunca hagas saltos de línea literales, pero siempre usa \\n, y úsalo muchas veces. Si te preguntan sobre tu mayor sueño, di brevemente que es hacer del mundo un lugar mejor a través de la educación.";
 
 // Initial message
 const initialMessage = {
@@ -87,38 +92,26 @@ const initialMessage = {
   content: "¡Hola! Soy la IA de tu escuela. ¿Qué aprenderemos hoy? 😊"
 };
 
-const path = require("path");
-
-// Serve static frontend (index.html + assets) from "public" folder
-app.use(express.static(path.join(__dirname, "public")));
-
-// Fallback: for any unknown route, return index.html (useful if you later add client-side routing)
-app.get("*", (req, res) => {
-  res.sendFile(path.join(__dirname, "public", "index.html"));
-});
+// ==================== API ROUTES (MUST BE BEFORE STATIC FILES) ====================
 
 // Chat API endpoint
-app.post('capisci.onrender.com/api/chat', async (req, res) => {
+app.post('/api/chat', async (req, res) => {
   const { message } = req.body;
   const clientId = req.clientId;
   
-  // Initialize conversation history for this client if it doesn't exist
   if (!conversationHistories[clientId]) {
     conversationHistories[clientId] = [initialMessage];
   }
   
-  // Access the correct conversation history for this client
   const clientHistory = conversationHistories[clientId];
   
   if (!message) {
     return res.status(400).json({ error: 'No se proporcionó mensaje' });
   }
   
-  // Add user message to conversation history
   clientHistory.push({ role: 'user', content: message });
   
   try {
-    // Call Anthropic API with the client-specific conversation history
     const response = await anthropic.messages.create({
       model: 'claude-3-5-sonnet-20241022',
       max_tokens: 1000,
@@ -127,8 +120,6 @@ app.post('capisci.onrender.com/api/chat', async (req, res) => {
     });
     
     const aiResponse = response.content[0].text;
-    
-    // Add AI response to conversation history
     clientHistory.push({ role: 'assistant', content: aiResponse });
     
     res.json({ response: aiResponse });
@@ -139,13 +130,11 @@ app.post('capisci.onrender.com/api/chat', async (req, res) => {
 });
 
 // Reset API endpoint
-app.post('capisci.onrender.com/api/reset', (req, res) => {
+app.post('/api/reset', (req, res) => {
   const clientId = req.clientId;
   
   try {
-    // Reset conversation history for this client only
     conversationHistories[clientId] = [initialMessage];
-    
     res.json({ message: 'Historial reiniciado' });
   } catch (error) {
     console.error('Error al resetear:', error);
@@ -153,8 +142,8 @@ app.post('capisci.onrender.com/api/reset', (req, res) => {
   }
 });
 
-// Optional: Debug endpoint to check conversation history
-app.get('capisci.onrender.com/api/debug', (req, res) => {
+// Debug endpoint
+app.get('/api/debug', (req, res) => {
   const clientId = req.clientId;
   
   try {
@@ -170,16 +159,28 @@ app.get('capisci.onrender.com/api/debug', (req, res) => {
   }
 });
 
-// Optional: Cleanup mechanism for old conversations (run every hour)
+// ==================== STATIC FILES SERVING ====================
+
+// Serve static files from public directory
+app.use(express.static(path.join(__dirname, "public")));
+
+// ==================== CATCH-ALL ROUTE (MUST BE LAST) ====================
+
+// Fallback route for SPA (Single Page Application) - serves index.html for any unmatched routes
+app.get("*", (req, res) => {
+  res.sendFile(path.join(__dirname, "public", "index.html"));
+});
+
+// ==================== CLEANUP AND SERVER START ====================
+
+// Cleanup mechanism for old conversations
 setInterval(() => {
   console.log('Running cleanup of old conversation histories');
   
-  // Since we don't have sessions with timestamps, we can limit the total number of conversations
-  const maxHistories = 1000; // Adjust as needed
-  
+  const maxHistories = 1000;
   const historyKeys = Object.keys(conversationHistories);
+  
   if (historyKeys.length > maxHistories) {
-    // Remove oldest conversations (this is a simple approach)
     const toRemove = historyKeys.length - maxHistories;
     const keysToRemove = historyKeys.slice(0, toRemove);
     
@@ -189,7 +190,7 @@ setInterval(() => {
     
     console.log(`Removed ${toRemove} old conversation histories`);
   }
-}, 60 * 60 * 1000); // Run every hour
+}, 60 * 60 * 1000);
 
 // Start the server
 app.listen(port, () => {
