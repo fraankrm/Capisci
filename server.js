@@ -87,6 +87,16 @@ const initialMessage = {
   content: "¡Hola! Soy la IA de tu escuela. ¿Qué aprenderemos hoy? 😊"
 };
 
+const path = require("path");
+
+// Serve static frontend (index.html + assets) from "public" folder
+app.use(express.static(path.join(__dirname, "public")));
+
+// Fallback: for any unknown route, return index.html (useful if you later add client-side routing)
+app.get("*", (req, res) => {
+  res.sendFile(path.join(__dirname, "public", "index.html"));
+});
+
 // Chat API endpoint
 app.post('/api/chat', async (req, res) => {
   const { message } = req.body;
