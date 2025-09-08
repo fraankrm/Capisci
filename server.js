@@ -98,7 +98,7 @@ app.get("*", (req, res) => {
 });
 
 // Chat API endpoint
-app.post('/api/chat', async (req, res) => {
+app.post('capisci.onrender.com/api/chat', async (req, res) => {
   const { message } = req.body;
   const clientId = req.clientId;
   
@@ -139,7 +139,7 @@ app.post('/api/chat', async (req, res) => {
 });
 
 // Reset API endpoint
-app.post('/api/reset', (req, res) => {
+app.post('capisci.onrender.com/api/reset', (req, res) => {
   const clientId = req.clientId;
   
   try {
@@ -154,7 +154,7 @@ app.post('/api/reset', (req, res) => {
 });
 
 // Optional: Debug endpoint to check conversation history
-app.get('/api/debug', (req, res) => {
+app.get('capisci.onrender.com/api/debug', (req, res) => {
   const clientId = req.clientId;
   
   try {
