@@ -1,33 +1,55 @@
-const conversationHistories = {};require('dotenv').config();
 const express = require('express');
 const Anthropic = require('@anthropic-ai/sdk');
 const cors = require('cors');
+const crypto = require("crypto");
+
+const conversationHistories = {};
+require('dotenv').config();
+
 
 // Initialize Express app
 const app = express();
 const port = process.env.PORT || 3000;
 
-// Initialize Anthropic client
+
+function decryptKey(encryptedKey, ivHex, secretHex) {
+  const iv = Buffer.from(ivHex, "hex");
+  const secret = Buffer.from(secretHex, "hex");
+
+  const decipher = crypto.createDecipheriv("aes-256-cbc", secret, iv);
+  let decrypted = decipher.update(encryptedKey, "hex", "utf8");
+  decrypted += decipher.final("utf8");
+  return decrypted;
+}
+
+const apiKey = decryptKey(
+  process.env.API_KEY, 
+  process.env.API_IV,     
+  process.env.WAFFLE      
+);
+
 const anthropic = new Anthropic({
-  apiKey: process.env.ANTHROPIC_API_KEY,
+  apiKey: apiKey,
 });
 
 // CORS configuration
 const allowedOrigins = [
-  'https://capisci.org',
-  'https://www.capisci.org'
+  "https://capisci.org",
+  "https://www.capisci.org",
 ];
 
-app.use(cors({
-  origin: function (origin, callback) {
-    if (!origin || allowedOrigins.includes(origin)) {
-      callback(null, true);
-    } else {
-      callback(new Error('Not allowed by CORS'));
-    }
-  },
-  credentials: true
-}));
+app.use(
+  cors({
+    origin: function (origin, callback) {
+      if (!origin || allowedOrigins.includes(origin)) {
+        callback(null, true);
+      } else {
+        callback(new Error("Not allowed by CORS"));
+      }
+    },
+    credentials: true,
+  })
+);
 
 // Body parser middleware
 app.use(express.json());
@@ -60,7 +82,7 @@ const systemPrompt = "Eres Lemma, un modelo de IA educativo desarrollado por Cap
 // Initial message
 const initialMessage = {
   role: 'assistant',
-  content: "¡Hola! Soy la IA de tu colegio. ¿Qué aprenderemos hoy? 😊"
+  content: "¡Hola! Soy la IA de tu escuela. ¿Qué aprenderemos hoy? 😊"
 };
 
 // Chat API endpoint
