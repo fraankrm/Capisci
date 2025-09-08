@@ -1,10 +1,11 @@
+require('dotenv').config();
+
 const express = require('express');
 const Anthropic = require('@anthropic-ai/sdk');
 const cors = require('cors');
 const crypto = require("crypto");
 
 const conversationHistories = {};
-require('dotenv').config();
 
 
 // Initialize Express app
