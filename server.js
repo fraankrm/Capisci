@@ -14,33 +14,11 @@ const port = process.env.PORT || 3000;
 // Simple decryption function
 function simpleDecrypt(encodedData) {
   try {
-    // First, reverse the base64 encoding
-    const reversed = Buffer.from(encodedData, 'base64').toString('utf8');
-    
-    // Then apply a simple character shift (Caesar cipher variant)
-    let result = '';
-    const shift = 13; // ROT13-style shift
-    
-    for (let i = 0; i < reversed.length; i++) {
-      const char = reversed[i];
-      const charCode = char.charCodeAt(0);
-      
-      if (char >= 'A' && char <= 'Z') {
-        // Uppercase letters
-        result += String.fromCharCode(((charCode - 65 - shift + 26) % 26) + 65);
-      } else if (char >= 'a' && char <= 'z') {
-        // Lowercase letters  
-        result += String.fromCharCode(((charCode - 97 - shift + 26) % 26) + 97);
-      } else if (char >= '0' && char <= '9') {
-        // Numbers
-        result += String.fromCharCode(((charCode - 48 - shift + 10) % 10) + 48);
-      } else {
-        // Other characters (-, _, etc.)
-        result += char;
-      }
-    }
-    
-    return result;
+    // Just decode from base64 - no character shifting
+    const decoded = Buffer.from(encodedData, 'base64').toString('utf8').trim();
+    console.log('Decoded key length:', decoded.length);
+    console.log('Decoded key starts with sk-ant-:', decoded.startsWith('sk-ant-'));
+    return decoded;
   } catch (error) {
     console.error('Decryption failed:', error);
     throw new Error('Failed to decrypt API key');
@@ -51,16 +29,25 @@ function simpleDecrypt(encodedData) {
 let apiKey;
 try {
   if (!process.env.ENCODED_KEY) {
-    throw new Error('ENCODED_KEY environment variable is missing');
+    console.error('ENCODED_KEY environment variable is missing');
+    process.exit(1);
   }
   
+  console.log('ENCODED_KEY found, length:', process.env.ENCODED_KEY.length);
+  
   apiKey = simpleDecrypt(process.env.ENCODED_KEY);
-  console.log('API key successfully decrypted, length:', apiKey.length);
+  
+  console.log('Decrypted API key length:', apiKey.length);
+  console.log('API key starts with sk-ant-:', apiKey.startsWith('sk-ant-'));
   
   // Verify it looks like an Anthropic API key
   if (!apiKey.startsWith('sk-ant-')) {
-    throw new Error('Decrypted key does not appear to be a valid Anthropic API key');
+    console.error('Decrypted key does not start with sk-ant-');
+    console.error('First 20 characters:', apiKey.substring(0, 20));
+    process.exit(1);
   }
+  
+  console.log('✅ API key successfully initialized');
   
 } catch (error) {
   console.error('API key setup failed:', error.message);
@@ -233,4 +220,50 @@ setInterval(() => {
 
 app.listen(port, () => {
   console.log(`Servidor corriendo en el puerto ${port}`);
+});
+
+
+
+app.get('/api/debug-key', (req, res) => {
+  try {
+    console.log('=== API KEY DEBUG ===');
+    console.log('ENCODED_KEY exists:', !!process.env.ENCODED_KEY);
+    console.log('ENCODED_KEY length:', process.env.ENCODED_KEY?.length || 0);
+    console.log('ENCODED_KEY first 20 chars:', process.env.ENCODED_KEY?.substring(0, 20) || 'N/A');
+    
+    if (process.env.ENCODED_KEY) {
+      const decrypted = simpleDecrypt(process.env.ENCODED_KEY);
+      console.log('Decrypted key length:', decrypted.length);
+      console.log('Decrypted key starts with sk-ant-:', decrypted.startsWith('sk-ant-'));
+      console.log('Decrypted key first 10 chars:', decrypted.substring(0, 10));
+      console.log('Decrypted key last 10 chars:', decrypted.substring(decrypted.length - 10));
+      
+      // Check for whitespace issues
+      const trimmed = decrypted.trim();
+      console.log('Has leading/trailing whitespace:', decrypted !== trimmed);
+      console.log('Contains newlines:', decrypted.includes('\n'));
+      console.log('Contains carriage returns:', decrypted.includes('\r'));
+      
+      res.json({
+        success: true,
+        encodedLength: process.env.ENCODED_KEY.length,
+        decryptedLength: decrypted.length,
+        startsWithSkAnt: decrypted.startsWith('sk-ant-'),
+        firstChars: decrypted.substring(0, 10),
+        lastChars: decrypted.substring(decrypted.length - 10),
+        hasWhitespace: decrypted !== trimmed,
+        hasNewlines: decrypted.includes('\n'),
+        // Don't return the actual key for security
+      });
+    } else {
+      res.status(500).json({ error: 'ENCODED_KEY not found' });
+    }
+    
+  } catch (error) {
+    console.error('Debug key error:', error);
+    res.status(500).json({ 
+      error: error.message,
+      stack: error.stack 
+    });
+  }
 });
