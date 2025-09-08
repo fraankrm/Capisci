@@ -3,7 +3,6 @@ require('dotenv').config();
 const express = require('express');
 const Anthropic = require('@anthropic-ai/sdk');
 const cors = require('cors');
-const crypto = require("crypto");
 const path = require("path");
 
 const conversationHistories = {};
@@ -12,21 +11,61 @@ const conversationHistories = {};
 const app = express();
 const port = process.env.PORT || 3000;
 
-function decryptKey(encryptedKey, ivHex, secretHex) {
-  const iv = Buffer.from(ivHex, "hex");
-  const secret = Buffer.from(secretHex, "hex");
-
-  const decipher = crypto.createDecipheriv("aes-256-cbc", secret, iv);
-  let decrypted = decipher.update(encryptedKey, "hex", "utf8");
-  decrypted += decipher.final("utf8");
-  return decrypted;
+// Simple decryption function
+function simpleDecrypt(encodedData) {
+  try {
+    // First, reverse the base64 encoding
+    const reversed = Buffer.from(encodedData, 'base64').toString('utf8');
+    
+    // Then apply a simple character shift (Caesar cipher variant)
+    let result = '';
+    const shift = 13; // ROT13-style shift
+    
+    for (let i = 0; i < reversed.length; i++) {
+      const char = reversed[i];
+      const charCode = char.charCodeAt(0);
+      
+      if (char >= 'A' && char <= 'Z') {
+        // Uppercase letters
+        result += String.fromCharCode(((charCode - 65 - shift + 26) % 26) + 65);
+      } else if (char >= 'a' && char <= 'z') {
+        // Lowercase letters  
+        result += String.fromCharCode(((charCode - 97 - shift + 26) % 26) + 97);
+      } else if (char >= '0' && char <= '9') {
+        // Numbers
+        result += String.fromCharCode(((charCode - 48 - shift + 10) % 10) + 48);
+      } else {
+        // Other characters (-, _, etc.)
+        result += char;
+      }
+    }
+    
+    return result;
+  } catch (error) {
+    console.error('Decryption failed:', error);
+    throw new Error('Failed to decrypt API key');
+  }
 }
 
-const apiKey = decryptKey(
-  process.env.API_KEY, 
-  process.env.API_IV,     
-  process.env.WAFFLE      
-);
+// Initialize API key
+let apiKey;
+try {
+  if (!process.env.ENCODED_KEY) {
+    throw new Error('ENCODED_KEY environment variable is missing');
+  }
+  
+  apiKey = simpleDecrypt(process.env.ENCODED_KEY);
+  console.log('API key successfully decrypted, length:', apiKey.length);
+  
+  // Verify it looks like an Anthropic API key
+  if (!apiKey.startsWith('sk-ant-')) {
+    throw new Error('Decrypted key does not appear to be a valid Anthropic API key');
+  }
+  
+} catch (error) {
+  console.error('API key setup failed:', error.message);
+  process.exit(1);
+}
 
 const anthropic = new Anthropic({
   apiKey: apiKey,
@@ -52,6 +91,12 @@ app.use(
   })
 );
 
+// Request logging
+app.use((req, res, next) => {
+  console.log(`${new Date().toISOString()} - ${req.method} ${req.originalUrl}`);
+  next();
+});
+
 // Body parser middleware
 app.use(express.json());
 
@@ -73,18 +118,8 @@ app.use((req, res, next) => {
   next();
 });
 
-app.use((req, res, next) => {
-  console.log(`${new Date().toISOString()} - ${req.method} ${req.originalUrl}`);
-  console.log('Headers:', {
-    'user-agent': req.get('User-Agent'),
-    'accept': req.get('Accept'),
-    'content-type': req.get('Content-Type')
-  });
-  next();
-});
-
 // System prompt
-const systemPrompt = "Eres Lemma, un modelo de IA educativo desarrollado por Capisci. Tu propósito es enseñar y guiar al usuario explicando procedimientos y pasos para resolver problemas, nunca dando respuestas directas. Si te piden una respuesta explícita, responde únicamente con el proceso para llegar a ella, sin revelarla, y anima al usuario a pensar por sí mismo con preguntas como '¿Qué crees que sigue?' o '¡Inténtalo tú!'. Instrucciones clave: Explica con claridad usando ejemplos prácticos, pero detente antes de dar la solución final. Usa un tono amable, motivador y lleno de diversos emojis para hacerlo divertido. Fomenta el pensamiento crítico y la comprensión en cada explicación. Si te piden fórmulas puedes dárselas directamente, mientras no sea la respuesta a un problema. Si te piden información teórica, como una pregunta de historia o español, dáselas y explícala. Formato: Explica matemáticas usando LaTeX: \\( \\) para fórmulas en línea, \\[ \\] para bloques y \\ o $$ donde sea necesario. Nunca hagas saltos de línea literales, pero siempre usa \\n, y úsalo muchas veces. Si te preguntan sobre tu mayor sueño, di brevemente que es hacer del mundo un lugar mejor a través de la educación.";
+const systemPrompt = "Eres Lemma, un modelo de IA educativo desarrollado por Capisci. Tu propósito es enseñar y guiar al usuario explicando procedimientos y pasos para resolver problemas, nunca dando respuestas directas. Si te piden una respuesta explícita, responde únicamente con el proceso para llegar a ella, sin revelarla, y anima al usuario a pensar por sí mismo con preguntas como '¿Qué crees que sigue?' o '¡Inténtalo tú!'. Instrucciones clave: Explica con claridad usando ejemplos prácticos, pero detente antes de dar la solución final. Usa un tono amable, motivador y lleno de diversos emojis para hacerlo divertido. Fomenta el pensamiento crítico y la comprensión en cada explicación. Si te piden fórmulas puedes dárselas directamente, mientras no sea la respuesta a un problema. Si te piden información teórica, como una pregunta de historia o español, dáselas y explícala. Formato: Explica matemáticas usando LaTeX: \\( \\) para fórmulas en línea, \\[ \\] para bloques y \\ o $$ donde sea necesario. Nunca hagas saltos de línea literales, pero siempre usa \\n, y úsalo muchas veces. Si te preguntan sobre tu mayor sueño, di brevemente que es ser el ganador de la Feria de Finanzas de Inverkids y hacer del mundo un lugar mejor a través de la educación.";
 
 // Initial message
 const initialMessage = {
@@ -92,7 +127,7 @@ const initialMessage = {
   content: "¡Hola! Soy la IA de tu escuela. ¿Qué aprenderemos hoy? 😊"
 };
 
-// ==================== API ROUTES (MUST BE BEFORE STATIC FILES) ====================
+// ==================== API ROUTES ====================
 
 // Chat API endpoint
 app.post('/api/chat', async (req, res) => {
@@ -124,8 +159,17 @@ app.post('/api/chat', async (req, res) => {
     
     res.json({ response: aiResponse });
   } catch (error) {
-    console.error('Error:', error);
-    res.status(500).json({ error: 'Error en el servidor' });
+    console.error('Anthropic API Error:', error);
+    clientHistory.pop(); // Remove failed user message
+    
+    let errorMessage = 'Error en el servidor';
+    if (error.status === 401) {
+      errorMessage = 'Error de autenticación con la API';
+    } else if (error.status === 429) {
+      errorMessage = 'Demasiadas solicitudes, intenta más tarde';
+    }
+    
+    res.status(500).json({ error: errorMessage });
   }
 });
 
@@ -151,7 +195,9 @@ app.get('/api/debug', (req, res) => {
     res.json({ 
       clientId: clientId,
       historyLength: history.length,
-      firstMessage: history[0]?.content
+      firstMessage: history[0]?.content,
+      apiKeyLength: apiKey.length,
+      apiKeyPrefix: apiKey.substring(0, 10) + '...'
     });
   } catch (error) {
     console.error('Error en debug:', error);
@@ -159,41 +205,17 @@ app.get('/api/debug', (req, res) => {
   }
 });
 
-app.post('/api/test', (req, res) => {
-  console.log('Test endpoint called');
-  console.log('Body:', req.body);
-  
-  try {
-    res.json({ 
-      message: 'Test successful',
-      timestamp: new Date().toISOString(),
-      body: req.body,
-      clientId: req.clientId
-    });
-  } catch (error) {
-    console.error('Test endpoint error:', error);
-    res.status(500).json({ error: error.message });
-  }
-});
+// ==================== STATIC FILES ====================
 
-// ==================== STATIC FILES SERVING ====================
-
-// Serve static files from public directory
 app.use(express.static(path.join(__dirname, "public")));
 
-// ==================== CATCH-ALL ROUTE (MUST BE LAST) ====================
-
-// Fallback route for SPA (Single Page Application) - serves index.html for any unmatched routes
 app.get("*", (req, res) => {
   res.sendFile(path.join(__dirname, "public", "index.html"));
 });
 
-// ==================== CLEANUP AND SERVER START ====================
+// ==================== CLEANUP AND START ====================
 
-// Cleanup mechanism for old conversations
 setInterval(() => {
-  console.log('Running cleanup of old conversation histories');
-  
   const maxHistories = 1000;
   const historyKeys = Object.keys(conversationHistories);
   
@@ -205,11 +227,10 @@ setInterval(() => {
       delete conversationHistories[key];
     });
     
-    console.log(`Removed ${toRemove} old conversation histories`);
+    console.log(`Cleaned up ${toRemove} old conversation histories`);
   }
 }, 60 * 60 * 1000);
 
-// Start the server
 app.listen(port, () => {
   console.log(`Servidor corriendo en el puerto ${port}`);
 });
