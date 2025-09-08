@@ -159,6 +159,23 @@ app.get('/api/debug', (req, res) => {
   }
 });
 
+app.post('/api/test', (req, res) => {
+  console.log('Test endpoint called');
+  console.log('Body:', req.body);
+  
+  try {
+    res.json({ 
+      message: 'Test successful',
+      timestamp: new Date().toISOString(),
+      body: req.body,
+      clientId: req.clientId
+    });
+  } catch (error) {
+    console.error('Test endpoint error:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // ==================== STATIC FILES SERVING ====================
 
 // Serve static files from public directory
