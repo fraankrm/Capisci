@@ -37,6 +37,7 @@ const anthropic = new Anthropic({
 const allowedOrigins = [
   "https://capisci.org",
   "https://www.capisci.org",
+  "https://capisci.onrender.com"
 ];
 
 app.use(
