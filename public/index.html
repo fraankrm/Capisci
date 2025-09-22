@@ -145,6 +145,95 @@
                 color: #333333;
             }
 
+            /* Enhanced markup styles */
+            .message-content strong {
+                font-weight: 700;
+                color: #1a1a1a;
+            }
+
+            .message-content em {
+                font-style: italic;
+                color: #2c2c2c;
+            }
+
+            .message-content code {
+                background-color: #f5f5f5;
+                padding: 0.2em 0.4em;
+                border-radius: 4px;
+                font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+                font-size: 0.9em;
+                color: #e83e8c;
+                border: 1px solid #e1e1e1;
+            }
+
+            .message-content pre {
+                background-color: #f8f8f8;
+                border: 1px solid #e1e1e1;
+                border-radius: 8px;
+                padding: 1rem;
+                margin: 0.5rem 0;
+                overflow-x: auto;
+                font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+                font-size: 0.9em;
+                line-height: 1.4;
+            }
+
+            .message-content pre code {
+                background: none;
+                border: none;
+                padding: 0;
+                color: #333;
+            }
+
+            .message-content blockquote {
+                border-left: 4px solid #007bff;
+                padding-left: 1rem;
+                margin: 0.5rem 0;
+                color: #666;
+                font-style: italic;
+                background-color: #f8f9fa;
+                padding: 0.5rem 1rem;
+                border-radius: 0 4px 4px 0;
+            }
+
+            .message-content ul, .message-content ol {
+                margin: 0.5rem 0 0.5rem 1.5rem;
+            }
+
+            .message-content li {
+                margin: 0.25rem 0;
+            }
+
+            .message-content h1, .message-content h2, .message-content h3, 
+            .message-content h4, .message-content h5, .message-content h6 {
+                margin: 1rem 0 0.5rem 0;
+                color: #1a1a1a;
+                font-weight: 600;
+            }
+
+            .message-content h1 { font-size: 1.5em; }
+            .message-content h2 { font-size: 1.3em; }
+            .message-content h3 { font-size: 1.2em; }
+            .message-content h4 { font-size: 1.1em; }
+            .message-content h5 { font-size: 1em; }
+            .message-content h6 { font-size: 0.9em; }
+
+            .message-content a {
+                color: #007bff;
+                text-decoration: none;
+            }
+
+            .message-content a:hover {
+                text-decoration: underline;
+            }
+
+            .message-content .highlight {
+                background-color: #fff3cd;
+                padding: 0.1em 0.3em;
+                border-radius: 3px;
+                border: 1px solid #ffeaa7;
+            }
+
             @keyframes fadeIn {
                 to {
                     opacity: 1;
@@ -245,7 +334,7 @@
 
             .send-button:active {
                 transform: scale(0.95);
-    }
+            }
 
             .char-count {
                 position: absolute;
@@ -326,6 +415,85 @@
             let isProcessing = false;
             let isRendering = false;
 
+            // Enhanced markup processing function
+            function processMarkup(text) {
+                // First, handle LaTeX preservation
+                const latexBlocks = [];
+                let latexIndex = 0;
+                
+                // Preserve display LaTeX \\[ \\] and $$ $$
+                text = text.replace(/\\\[(.*?)\\\]/gs, (match) => {
+                    latexBlocks.push(match);
+                    return `__LATEX_BLOCK_${latexIndex++}__`;
+                });
+                
+                text = text.replace(/\$\$(.*?)\$\$/gs, (match) => {
+                    latexBlocks.push(match);
+                    return `__LATEX_BLOCK_${latexIndex++}__`;
+                });
+                
+                // Preserve inline LaTeX \\( \\) and $ $
+                text = text.replace(/\\\((.*?)\\\)/gs, (match) => {
+                    latexBlocks.push(match);
+                    return `__LATEX_BLOCK_${latexIndex++}__`;
+                });
+                
+                text = text.replace(/\$([^$\n]+?)\$/g, (match) => {
+                    latexBlocks.push(match);
+                    return `__LATEX_BLOCK_${latexIndex++}__`;
+                });
+
+                // Process basic markdown-like formatting
+                // Headers
+                text = text.replace(/^### (.*$)/gim, '<h3>$1</h3>');
+                text = text.replace(/^## (.*$)/gim, '<h2>$1</h2>');
+                text = text.replace(/^# (.*$)/gim, '<h1>$1</h1>');
+                
+                // Bold and italic (be careful with order)
+                text = text.replace(/\*\*\*([^*]+?)\*\*\*/g, '<strong><em>$1</em></strong>');
+                text = text.replace(/\*\*([^*]+?)\*\*/g, '<strong>$1</strong>');
+                text = text.replace(/\*([^*]+?)\*/g, '<em>$1</em>');
+                
+                // Alternative bold/italic syntax
+                text = text.replace(/___([^_]+?)___/g, '<strong><em>$1</em></strong>');
+                text = text.replace(/__([^_]+?)__/g, '<strong>$1</strong>');
+                text = text.replace(/_([^_]+?)_/g, '<em>$1</em>');
+                
+                // Code blocks (triple backticks)
+                text = text.replace(/```(.*?)```/gs, '<pre><code>$1</code></pre>');
+                
+                // Inline code (single backticks)
+                text = text.replace(/`([^`]+?)`/g, '<code>$1</code>');
+                
+                // Blockquotes
+                text = text.replace(/^> (.+$)/gim, '<blockquote>$1</blockquote>');
+                
+                // Unordered lists
+                text = text.replace(/^\s*[-*+]\s(.+$)/gim, '<li>$1</li>');
+                text = text.replace(/(<li>.*<\/li>)/gs, '<ul>$1</ul>');
+                
+                // Ordered lists
+                text = text.replace(/^\s*\d+\.\s(.+$)/gim, '<li>$1</li>');
+                // This is a simplified approach - in reality you'd want more sophisticated list handling
+                
+                // Highlighting ==text==
+                text = text.replace(/==([^=]+?)==/g, '<span class="highlight">$1</span>');
+                
+                // Links [text](url)
+                text = text.replace(/\[([^\]]+?)\]\(([^)]+?)\)/g, '<a href="$2" target="_blank" rel="noopener">$1</a>');
+                
+                // Line breaks
+                text = text.replace(/\\n/g, '<br>');
+                text = text.replace(/\n/g, '<br>');
+                
+                // Restore LaTeX blocks
+                for (let i = 0; i < latexBlocks.length; i++) {
+                    text = text.replace(`__LATEX_BLOCK_${i}__`, latexBlocks[i]);
+                }
+                
+                return text;
+            }
+
             function updateUI() {
                 const length = messageInput.value.length;
                 charCount.textContent = `${length}/${maxChars}`;
@@ -343,10 +511,16 @@
             }
 
             function animateText(element, rawText) {
+                // Process markup first
+                const processedText = processMarkup(rawText);
+                
                 element.innerHTML = '';
                 let index = 0;
-                const processedText = rawText.replace(/<br>/g, "");
-                const words = processedText.split(' ');
+                // For animation, we'll work with the processed HTML
+                const tempDiv = document.createElement('div');
+                tempDiv.innerHTML = processedText;
+                const textContent = tempDiv.textContent || tempDiv.innerText || '';
+                const words = textContent.split(' ');
 
                 function addWord() {
                     if (index < words.length) {
@@ -365,7 +539,7 @@
                 }
 
                 function finishAnimation() {
-                    element.innerHTML = rawText;
+                    element.innerHTML = processedText;
                     MathJax.Hub.Queue(['Typeset', MathJax.Hub, element]);
                 }
 
@@ -378,16 +552,16 @@
 
                 const messageContent = document.createElement('div');
                 messageContent.className = 'message-content';
-                const processedContent = content.replace(/\\n/g, '<br>').replace(/"/g, "'");
 
                 if (isUser) {
                     messageContent.className += ' user-content';
+                    const processedContent = processMarkup(content);
                     messageContent.innerHTML = processedContent;
                     MathJax.Hub.Queue(['Typeset', MathJax.Hub, messageContent]);
                 } else if (isThinking) {
                     messageContent.innerHTML = '<span class="thinking-text">Generando respuesta...</span>';
                 } else {
-                    animateText(messageContent, processedContent);
+                    animateText(messageContent, content);
                 }
 
                 isRendering = true;
