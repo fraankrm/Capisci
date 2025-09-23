@@ -353,6 +353,10 @@
                 const processedText = rawText.replace(/<br>/g, "");
                 const words = processedText.split(' ');
 
+                function replaceBoldTextSimple(element) {
+                    element.innerHTML = element.innerHTML.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+                }
+
                 function addWord() {
                     if (index < words.length) {
                         const span = document.createElement('span');
@@ -369,43 +373,10 @@
                     }
                 }
 
-                function replaceBoldText(element) {
-                const walker = document.createTreeWalker(
-                    element,
-                    NodeFilter.SHOW_TEXT,
-                    null,
-                    false
-                );
-                
-                const textNodes = [];
-                let node;
-                
-                while (node = walker.nextNode()) {
-                    textNodes.push(node);
-                }
-                
-                textNodes.forEach(textNode => {
-                    const text = textNode.textContent;
-                    
-                    if (text.includes('**')) {
-                        const newHTML = text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
-                        
-                        const tempDiv = document.createElement('div');
-                        tempDiv.innerHTML = newHTML;
-                        
-                        const parent = textNode.parentNode;
-                        while (tempDiv.firstChild) {
-                            parent.insertBefore(tempDiv.firstChild, textNode);
-                        }
-                        parent.removeChild(textNode);
-                    }
-                });
-            }
-
-                function finishAnimation(element, rawText) {
+                function finishAnimation() {
                     element.innerHTML = rawText;
-                    MathJax.Hub.Queue(['Typeset', MathJax.Hub, element]);
                     replaceBoldTextSimple(element);
+                    MathJax.Hub.Queue(['Typeset', MathJax.Hub, element]);
                 }
 
                 addWord();
