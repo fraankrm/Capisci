@@ -404,8 +404,8 @@
 
                 function finishAnimation(element, rawText) {
                     element.innerHTML = rawText;
-                    replaceBoldTextSimple(element);
                     MathJax.Hub.Queue(['Typeset', MathJax.Hub, element]);
+                    replaceBoldTextSimple(element);
                 }
 
                 addWord();
